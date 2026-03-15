@@ -31,18 +31,19 @@ else
   echo "==> openconnect already installed. Skipping."
 fi
 
-# ── 2b. sudoers rule for openconnect (no password prompt) ──────────────────────
+# ── 2b. sudoers rule (no password prompt) ──────────────────────────────────────
+# Covers two commands:
+#   openconnect        — needs root to create TUN device and modify routing table
+#   rm -f <tmp logs>   — /tmp has the sticky bit; logs are root-owned after each run
 OC_BIN="$(command -v openconnect)"
+RM_BIN="/bin/rm"
 SUDOERS_FILE="/etc/sudoers.d/openconnect-nus"
-SUDOERS_LINE="$(whoami) ALL=(ALL) NOPASSWD: $OC_BIN"
-if sudo grep -qF "$OC_BIN" "$SUDOERS_FILE" 2>/dev/null; then
-  echo "==> sudoers rule already present. Skipping."
-else
-  echo "==> Adding passwordless sudo rule for openconnect (requires your password once)..."
-  echo "$SUDOERS_LINE" | sudo tee "$SUDOERS_FILE" > /dev/null
-  sudo chmod 440 "$SUDOERS_FILE"
-  echo "==> sudoers rule added: $SUDOERS_FILE"
-fi
+SUDOERS_LINE="$(whoami) ALL=(ALL) NOPASSWD: $OC_BIN, $RM_BIN -f /tmp/nus_auth.log /tmp/nus_vpnc.log /tmp/nus_openconnect.log /tmp/nus_cookie.txt"
+# Always rewrite the rule so it stays in sync if openconnect moves (e.g. after brew upgrade)
+echo "==> Writing sudoers rule to $SUDOERS_FILE (requires your password once)..."
+echo "$SUDOERS_LINE" | sudo tee "$SUDOERS_FILE" > /dev/null
+sudo chmod 440 "$SUDOERS_FILE"
+echo "==> sudoers rule written."
 
 # ── 3. openconnect-sso ─────────────────────────────────────────────────────────
 # openconnect-sso is a PyPI package (not Homebrew). It requires Python <=3.12

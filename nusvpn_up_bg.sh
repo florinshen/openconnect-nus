@@ -20,7 +20,11 @@ PID_FILE="$HOME/.nusvpn.pid"
 SCRIPT_DIR="${0:A:h}"
 SCRIPT="$SCRIPT_DIR/vpnc_nus_split.sh"
 
-rm -f "$AUTH_LOG" "$VPNC_LOG" "$OC_LOG" "$COOKIE_FILE" "$PID_FILE"
+# /tmp has the sticky bit: only the file owner can rm a file there.
+# Logs are written by root (sudo openconnect / vpnc-script), so sudo rm is needed.
+# The sudoers rule installed by install.sh covers this exact call without a password.
+sudo rm -f "$AUTH_LOG" "$VPNC_LOG" "$OC_LOG" "$COOKIE_FILE"
+rm -f "$PID_FILE" 2>/dev/null || true   # in $HOME — no sticky bit, user can always rm
 
 openconnect-sso -s "$SERVER" --browser-display-mode shown --authenticate shell 2>&1 | tee "$AUTH_LOG" >/dev/null
 
