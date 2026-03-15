@@ -31,10 +31,40 @@ else
   echo "==> openconnect already installed. Skipping."
 fi
 
+# ── 2b. sudoers rule for openconnect (no password prompt) ──────────────────────
+OC_BIN="$(command -v openconnect)"
+SUDOERS_FILE="/etc/sudoers.d/openconnect-nus"
+SUDOERS_LINE="$(whoami) ALL=(ALL) NOPASSWD: $OC_BIN"
+if sudo grep -qF "$OC_BIN" "$SUDOERS_FILE" 2>/dev/null; then
+  echo "==> sudoers rule already present. Skipping."
+else
+  echo "==> Adding passwordless sudo rule for openconnect (requires your password once)..."
+  echo "$SUDOERS_LINE" | sudo tee "$SUDOERS_FILE" > /dev/null
+  sudo chmod 440 "$SUDOERS_FILE"
+  echo "==> sudoers rule added: $SUDOERS_FILE"
+fi
+
 # ── 3. openconnect-sso ─────────────────────────────────────────────────────────
+# openconnect-sso is a PyPI package (not Homebrew). It requires Python <=3.12
+# because lxml (a dependency) does not yet support Python 3.14+.
+# We use pipx to install it in an isolated virtualenv.
 if ! command -v openconnect-sso >/dev/null 2>&1; then
-  echo "==> Installing openconnect-sso..."
-  brew install openconnect-sso
+  echo "==> Installing openconnect-sso via pipx (Python 3.12)..."
+
+  if ! command -v pipx >/dev/null 2>&1; then
+    brew install pipx
+    pipx ensurepath
+  fi
+
+  if ! brew list python@3.12 &>/dev/null; then
+    brew install python@3.12
+  fi
+
+  pipx install openconnect-sso --python /opt/homebrew/bin/python3.12
+
+  # setuptools >=71 dropped pkg_resources which openconnect-sso requires
+  "$HOME/.local/pipx/venvs/openconnect-sso/bin/python3.12" \
+    -m pip install "setuptools<71" --force-reinstall -q
 else
   echo "==> openconnect-sso already installed. Skipping."
 fi

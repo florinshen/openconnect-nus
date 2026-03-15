@@ -33,7 +33,9 @@ chmod +x install.sh
 
 This will:
 - Install [Homebrew](https://brew.sh) if it is not already present
-- Install `openconnect` and `openconnect-sso` via Homebrew
+- Install `openconnect` via Homebrew
+- Install `openconnect-sso` via `pipx` (using Python 3.12, since `openconnect-sso` is a PyPI package and requires Python ≤ 3.12)
+- Add a passwordless `sudo` rule for `openconnect` to `/etc/sudoers.d/openconnect-nus`
 - Copy the scripts to `~/.openconnect-nus/` (separate from the clone directory)
 - Add shell aliases to `~/.zshrc`
 
@@ -112,6 +114,29 @@ nusvpnup
 | `/tmp/nus_auth.log`           | SSO auth output (HOST/COOKIE/FINGERPRINT) |
 | `/tmp/nus_openconnect.log`    | openconnect daemon output           |
 | `/tmp/nus_vpnc.log`           | vpnc-script execution log           |
+
+---
+
+## Avoiding the sudo password prompt
+
+`openconnect` must run as root to create a TUN interface and modify the routing table. By default this means every `nusvpnup` asks for your password.
+
+You can eliminate the prompt by granting passwordless sudo **only for the `openconnect` binary** via a dedicated sudoers file:
+
+```sh
+echo "$(whoami) ALL=(ALL) NOPASSWD: $(which openconnect)" | sudo tee /etc/sudoers.d/openconnect-nus
+sudo chmod 440 /etc/sudoers.d/openconnect-nus
+```
+
+This is a narrow rule — it does not grant blanket passwordless sudo for anything else.
+
+> The `install.sh` script does this automatically during installation.
+
+To remove the rule later:
+
+```sh
+sudo rm /etc/sudoers.d/openconnect-nus
+```
 
 ---
 

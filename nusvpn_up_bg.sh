@@ -20,7 +20,7 @@ PID_FILE="$HOME/.nusvpn.pid"
 SCRIPT_DIR="${0:A:h}"
 SCRIPT="$SCRIPT_DIR/vpnc_nus_split.sh"
 
-sudo rm -f "$AUTH_LOG" "$VPNC_LOG" "$OC_LOG" "$COOKIE_FILE" "$PID_FILE"
+rm -f "$AUTH_LOG" "$VPNC_LOG" "$OC_LOG" "$COOKIE_FILE" "$PID_FILE"
 
 openconnect-sso -s "$SERVER" --browser-display-mode shown --authenticate shell 2>&1 | tee "$AUTH_LOG" >/dev/null
 
@@ -65,7 +65,7 @@ fi
 ok=0
 for i in {1..25}; do
   if kill -0 "$PID" 2>/dev/null; then
-    if [[ -f "$VPNC_LOG" ]] && grep -q 'MARKER V2' "$VPNC_LOG"; then
+    if [[ -f "$VPNC_LOG" ]] && grep -q 'MARKER V3' "$VPNC_LOG"; then
       ok=1
       break
     fi

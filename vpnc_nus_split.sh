@@ -59,6 +59,7 @@ resolve_ipv4() {
 case "$reason" in
   connect|reconnect)
     : > "$LOG"
+    chmod 666 "$LOG"
     log "MARKER V3"
     log "script=$0"
     log "reason=$reason"
