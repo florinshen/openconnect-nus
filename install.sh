@@ -4,7 +4,7 @@ set -euo pipefail
 # One-key installer for openconnect-nus on macOS
 # Installs Homebrew (if missing), openconnect, openconnect-sso, and sets up scripts.
 
-INSTALL_DIR="$HOME/openconnect-nus"
+INSTALL_DIR="$HOME/.openconnect-nus"
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 echo "==> openconnect-nus installer"

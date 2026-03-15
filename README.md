@@ -34,18 +34,18 @@ chmod +x install.sh
 This will:
 - Install [Homebrew](https://brew.sh) if it is not already present
 - Install `openconnect` and `openconnect-sso` via Homebrew
-- Copy the scripts to `~/openconnect-nus/`
+- Copy the scripts to `~/.openconnect-nus/` (separate from the clone directory)
 - Add shell aliases to `~/.zshrc`
 
 ### 3. Configure
 
-**`~/openconnect-nus/nusvpn_up_bg.sh`** — set your VPN portal URL:
+**`~/.openconnect-nus/nusvpn_up_bg.sh`** — set your VPN portal URL:
 
 ```sh
 SERVER="https://<your-vpn-host>/<portal-name>"
 ```
 
-**`~/openconnect-nus/vpnc_nus_split.sh`** — set the subnets to route through the VPN and an optional jump host:
+**`~/.openconnect-nus/vpnc_nus_split.sh`** — set the subnets to route through the VPN and an optional jump host:
 
 ```sh
 # Jump/bastion host (leave empty to skip)
