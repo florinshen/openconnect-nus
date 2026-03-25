@@ -32,6 +32,7 @@ del_routes() {
 # ============================================================
 
 HOPPER_IP_FILE="/tmp/nus_hopper_ips"
+ACTIVE_TUNDEV_FILE="/tmp/nus_active_tundev"
 
 ts(){ date "+%F %T"; }
 log(){ echo "$(ts) $*" >> "$LOG"; }
@@ -60,6 +61,7 @@ case "$reason" in
   connect|reconnect)
     : > "$LOG"
     chmod 666 "$LOG"
+    echo "$TUNDEV" > "$ACTIVE_TUNDEV_FILE"
     log "MARKER V3"
     log "script=$0"
     log "reason=$reason"
@@ -94,6 +96,19 @@ case "$reason" in
 
   disconnect)
     log "reason=disconnect TUNDEV=$TUNDEV"
+    # Safety guard: skip route cleanup if this is a stale/old tunnel.
+    # A stale disconnect happens when the user re-ran nusvpnup without killing
+    # the old process first — the old tunnel dies later and would wipe the new
+    # tunnel's routes.  Fix 1 (killing the old pid in nusvpn_up_bg.sh) prevents
+    # this, but keep this check as a belt-and-suspenders safeguard.
+    if [ -f "$ACTIVE_TUNDEV_FILE" ]; then
+      ACTIVE_TUNDEV="$(cat "$ACTIVE_TUNDEV_FILE")"
+      if [ "$TUNDEV" != "$ACTIVE_TUNDEV" ]; then
+        log "SKIP: stale disconnect for $TUNDEV (active tunnel is $ACTIVE_TUNDEV) — not deleting routes"
+        exit 0
+      fi
+    fi
+    rm -f "$ACTIVE_TUNDEV_FILE"
     del_routes
 
     if [ -f "$HOPPER_IP_FILE" ]; then

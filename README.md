@@ -109,11 +109,14 @@ nusvpnup
 
 ## Log Files
 
-| Path                          | Contents                            |
-|-------------------------------|-------------------------------------|
-| `/tmp/nus_auth.log`           | SSO auth output (HOST/COOKIE/FINGERPRINT) |
-| `/tmp/nus_openconnect.log`    | openconnect daemon output           |
-| `/tmp/nus_vpnc.log`           | vpnc-script execution log           |
+| Path                              | Contents                                  |
+|-----------------------------------|-------------------------------------------|
+| `/tmp/nus_auth.log`               | SSO auth output (HOST/COOKIE/FINGERPRINT) |
+| `/tmp/nus_openconnect.log`        | openconnect daemon output (current session) |
+| `/tmp/nus_openconnect.prev.log`   | openconnect daemon output (previous session — survives `nusvpnup`) |
+| `/tmp/nus_vpnc.log`               | vpnc-script execution log                 |
+
+When a session dies unexpectedly, check `/tmp/nus_openconnect.prev.log` first — it contains the reconnect failure messages, DPD timeouts, or server reset lines from the connection that just ended.
 
 ---
 
@@ -137,6 +140,53 @@ To remove the rule later:
 ```sh
 sudo rm /etc/sudoers.d/openconnect-nus
 ```
+
+---
+
+## Known Conflicts: Cisco Secure Client (`vpnagentd`)
+
+If you have the **official Cisco Secure Client** installed alongside this project, its background daemon (`vpnagentd`) can disrupt openconnect sessions.
+
+### Why it interferes
+
+Cisco Secure Client installs a kernel-level packet filter system extension (`com.cisco.anyconnect.macos.acsockext`). When its daemon restarts — for example, during a scheduled cloud-management sync — the extension briefly interrupts DTLS (UDP) packet delivery for all VPN traffic, including openconnect's tunnel. This causes SSH sessions to hang or drop even though the openconnect process is still alive.
+
+### Disable `vpnagentd` when not in use
+
+If you rarely use the official Cisco Secure Client, disable the daemon while using openconnect:
+
+```sh
+sudo launchctl bootout system/com.cisco.secureclient.vpn.service.agent
+sudo launchctl disable system/com.cisco.secureclient.vpn.service.agent
+```
+
+This persists across reboots. Verify it is gone:
+
+```sh
+ps aux | grep vpnagent | grep -v grep   # should return nothing
+```
+
+### Re-enable when you need Cisco Secure Client
+
+```sh
+sudo launchctl enable system/com.cisco.secureclient.vpn.service.agent
+sudo launchctl bootstrap system "/opt/cisco/secureclient/bin/Cisco Secure Client - AnyConnect VPN Service.app/Contents/Library/LaunchDaemons/com.cisco.secureclient.vpn.service.agent.plist"
+```
+
+Then open the Cisco Secure Client app normally. Once you are done, disable it again:
+
+```sh
+sudo launchctl bootout system/com.cisco.secureclient.vpn.service.agent
+sudo launchctl disable system/com.cisco.secureclient.vpn.service.agent
+```
+
+---
+
+## Session Lifetime
+
+The NUS VPN server enforces a **12-hour session limit**. At expiry, openconnect closes the tunnel and attempts to reconnect, but the server requires fresh browser authentication and rejects the reconnect. You will need to run `nusvpnup` again to re-authenticate.
+
+This is expected behaviour and cannot be worked around.
 
 ---
 

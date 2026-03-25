@@ -20,10 +20,29 @@ PID_FILE="$HOME/.nusvpn.pid"
 SCRIPT_DIR="${0:A:h}"
 SCRIPT="$SCRIPT_DIR/vpnc_nus_split.sh"
 
+# Kill any existing openconnect process BEFORE clearing logs/pid.
+# If the old process is not killed here it will eventually die on its own and its
+# vpnc disconnect script will delete the split-tunnel routes that the new connection
+# just added — breaking the VPN silently while the new tunnel is still alive.
+if [[ -f "$PID_FILE" ]]; then
+  OLD_PID="$(cat "$PID_FILE" | tr -d '[:space:]')"
+  if [[ -n "$OLD_PID" ]] && kill -0 "$OLD_PID" 2>/dev/null; then
+    echo "Stopping existing openconnect process (pid $OLD_PID)..."
+    sudo kill -INT "$OLD_PID" 2>/dev/null || sudo kill "$OLD_PID" 2>/dev/null || true
+    for i in {1..10}; do
+      kill -0 "$OLD_PID" 2>/dev/null || break
+      sleep 1
+    done
+  fi
+fi
+
 # /tmp has the sticky bit: only the file owner can rm a file there.
 # Logs are written by root (sudo openconnect / vpnc-script), so sudo rm is needed.
 # The sudoers rule installed by install.sh covers this exact call without a password.
-sudo rm -f "$AUTH_LOG" "$VPNC_LOG" "$OC_LOG" "$COOKIE_FILE"
+# Rotate the previous OC log so it survives the next run — useful for diagnosing
+# why the old connection died (reconnect failures, DPD timeouts, server resets, etc.).
+sudo mv -f "$OC_LOG" "${OC_LOG%.log}.prev.log" 2>/dev/null || true
+sudo rm -f "$AUTH_LOG" "$VPNC_LOG" "$COOKIE_FILE"
 rm -f "$PID_FILE" 2>/dev/null || true   # in $HOME — no sticky bit, user can always rm
 
 openconnect-sso -s "$SERVER" --browser-display-mode shown --authenticate shell 2>&1 | tee "$AUTH_LOG" >/dev/null
