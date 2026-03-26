@@ -45,7 +45,7 @@ SUDOERS_FILE="/etc/sudoers.d/openconnect-nus"
 #   kill -INT / kill     — send SIGINT/SIGTERM to root-owned openconnect process
 echo "==> Writing sudoers rule to $SUDOERS_FILE (requires your password once)..."
 cat <<EOF | sudo tee "$SUDOERS_FILE" > /dev/null
-$(whoami) ALL=(ALL) NOPASSWD: $OC_BIN, /bin/rm -f /tmp/nus_*, /bin/mv -f /tmp/nus_openconnect.log /tmp/nus_openconnect.prev.log, /bin/kill -INT *, /bin/kill -TERM *, /bin/kill *
+$(whoami) ALL=(ALL) NOPASSWD: $OC_BIN, /bin/rm -f /tmp/nus_*, /bin/mv -f /tmp/nus_openconnect.log /tmp/nus_openconnect.prev.log, /bin/kill
 EOF
 sudo chmod 440 "$SUDOERS_FILE"
 echo "==> sudoers rule written."
