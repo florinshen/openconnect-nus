@@ -182,11 +182,20 @@ sudo launchctl disable system/com.cisco.secureclient.vpn.service.agent
 
 ---
 
-## Session Lifetime
+## Session Lifetime and Idle Timeout
 
-The NUS VPN server enforces a **12-hour session limit**. At expiry, openconnect closes the tunnel and attempts to reconnect, but the server requires fresh browser authentication and rejects the reconnect. You will need to run `nusvpnup` again to re-authenticate.
+The NUS VPN server enforces two independent limits:
 
-This is expected behaviour and cannot be worked around.
+| Limit | Duration | What happens |
+|---|---|---|
+| **Session auth expiry** | 12 hours | openconnect closes the tunnel; reconnect requires fresh browser auth |
+| **Idle timeout** | ~8 hours | Server sends `Idle Timeout` disconnect if no user data traffic flows through the tunnel |
+
+The `DPD 30, Keepalive 20` values in the openconnect log are *CSTP protocol* keepalives — they keep the SSL pipe open but are **not counted as user traffic** by the server's idle timer.
+
+To prevent idle disconnects, `nusvpnup` starts a background keepalive process (stored in `~/.nusvpn_keepalive.pid`) that pings the hopper host through the VPN every 4 minutes 30 seconds. `nusvpndown` stops it automatically.
+
+You will still need to run `nusvpnup` again after the 12-hour session auth expires.
 
 ---
 

@@ -36,12 +36,17 @@ fi
 #   openconnect        — needs root to create TUN device and modify routing table
 #   rm -f <tmp logs>   — /tmp has the sticky bit; logs are root-owned after each run
 OC_BIN="$(command -v openconnect)"
-RM_BIN="/bin/rm"
 SUDOERS_FILE="/etc/sudoers.d/openconnect-nus"
-SUDOERS_LINE="$(whoami) ALL=(ALL) NOPASSWD: $OC_BIN, $RM_BIN -f /tmp/nus_auth.log /tmp/nus_vpnc.log /tmp/nus_openconnect.log /tmp/nus_cookie.txt"
-# Always rewrite the rule so it stays in sync if openconnect moves (e.g. after brew upgrade)
+# Always rewrite the rule so it stays in sync if openconnect moves (e.g. after brew upgrade).
+# Rules covered:
+#   openconnect          — needs root to create TUN device and modify routing table
+#   rm -f /tmp/nus_*     — /tmp has sticky bit; log files are root-owned after each run
+#   mv -f (log rotate)   — rotate previous OC log; source file is root-owned
+#   kill -INT / kill     — send SIGINT/SIGTERM to root-owned openconnect process
 echo "==> Writing sudoers rule to $SUDOERS_FILE (requires your password once)..."
-echo "$SUDOERS_LINE" | sudo tee "$SUDOERS_FILE" > /dev/null
+cat <<EOF | sudo tee "$SUDOERS_FILE" > /dev/null
+$(whoami) ALL=(ALL) NOPASSWD: $OC_BIN, /bin/rm -f /tmp/nus_*, /bin/mv -f /tmp/nus_openconnect.log /tmp/nus_openconnect.prev.log, /bin/kill -INT *, /bin/kill -TERM *, /bin/kill *
+EOF
 sudo chmod 440 "$SUDOERS_FILE"
 echo "==> sudoers rule written."
 

@@ -2,6 +2,7 @@
 set -euo pipefail
 
 PID_FILE="$HOME/.nusvpn.pid"
+KEEPALIVE_PID_FILE="$HOME/.nusvpn_keepalive.pid"
 OC_LOG="/tmp/nus_openconnect.log"
 VPNC_LOG="/tmp/nus_vpnc.log"
 
@@ -28,6 +29,15 @@ for i in {1..10}; do
 done
 
 rm -f "$PID_FILE"
+
+# Stop the keepalive background process.
+if [[ -f "$KEEPALIVE_PID_FILE" ]]; then
+  KA_PID="$(cat "$KEEPALIVE_PID_FILE" | tr -d '[:space:]')"
+  if [[ -n "$KA_PID" ]] && kill -0 "$KA_PID" 2>/dev/null; then
+    kill "$KA_PID" 2>/dev/null || true
+  fi
+  rm -f "$KEEPALIVE_PID_FILE"
+fi
 
 echo "VPN down"
 echo "OpenConnect log: $OC_LOG"

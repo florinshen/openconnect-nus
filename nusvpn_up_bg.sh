@@ -17,6 +17,7 @@ OC_LOG="/tmp/nus_openconnect.log"
 COOKIE_FILE="/tmp/nus_cookie.txt"
 
 PID_FILE="$HOME/.nusvpn.pid"
+KEEPALIVE_PID_FILE="$HOME/.nusvpn_keepalive.pid"
 SCRIPT_DIR="${0:A:h}"
 SCRIPT="$SCRIPT_DIR/vpnc_nus_split.sh"
 
@@ -34,6 +35,15 @@ if [[ -f "$PID_FILE" ]]; then
       sleep 1
     done
   fi
+fi
+
+# Also stop the keepalive for the old connection (runs as the current user).
+if [[ -f "$KEEPALIVE_PID_FILE" ]]; then
+  OLD_KA_PID="$(cat "$KEEPALIVE_PID_FILE" | tr -d '[:space:]')"
+  if [[ -n "$OLD_KA_PID" ]] && kill -0 "$OLD_KA_PID" 2>/dev/null; then
+    kill "$OLD_KA_PID" 2>/dev/null || true
+  fi
+  rm -f "$KEEPALIVE_PID_FILE"
 fi
 
 # /tmp has the sticky bit: only the file owner can rm a file there.
@@ -109,9 +119,28 @@ if [[ "$ok" != "1" ]]; then
   exit 1
 fi
 
+# Keepalive: ping an internal host every 4m30s to prevent the server's idle
+# timeout.  The Cisco AnyConnect SSE server sends "Idle Timeout" disconnect
+# after ~8h of no user data traffic, independent of the 12h session auth limit.
+# CSTP/DPD keepalives (VPN protocol level) do NOT count as user traffic.
+# Pinging the hopper (or any routed internal host) sends real ICMP through the
+# tunnel, resetting the idle counter on the server.
+PING_TARGET="$(head -1 /tmp/nus_hopper_ips 2>/dev/null | tr -d '[:space:]')"
+if [[ -n "$PING_TARGET" ]]; then
+  (
+    OC_PID="$PID"
+    while kill -0 "$OC_PID" 2>/dev/null; do
+      ping -c 1 -t 5 -q "$PING_TARGET" >/dev/null 2>&1 || true
+      sleep 270   # 4 min 30 s — well under any 8h idle threshold
+    done
+  ) &
+  echo $! > "$KEEPALIVE_PID_FILE"
+fi
+
 echo "VPN up"
 echo "PID file: $PID_FILE"
 echo "Auth log: $AUTH_LOG"
 echo "OpenConnect log: $OC_LOG"
 echo "VPnc log: $VPNC_LOG"
+echo "Keepalive pid file: $KEEPALIVE_PID_FILE (target: ${PING_TARGET:-none})"
 echo "Route check: netstat -rn -f inet | egrep '10\\.195|10\\.246|137\\.132'"
