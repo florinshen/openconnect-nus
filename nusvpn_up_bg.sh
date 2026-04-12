@@ -27,11 +27,11 @@ SCRIPT="$SCRIPT_DIR/vpnc_nus_split.sh"
 # just added — breaking the VPN silently while the new tunnel is still alive.
 if [[ -f "$PID_FILE" ]]; then
   OLD_PID="$(cat "$PID_FILE" | tr -d '[:space:]')"
-  if [[ -n "$OLD_PID" ]] && kill -0 "$OLD_PID" 2>/dev/null; then
+  if [[ -n "$OLD_PID" ]] && ps -p "$OLD_PID" > /dev/null 2>&1; then
     echo "Stopping existing openconnect process (pid $OLD_PID)..."
     sudo kill -INT "$OLD_PID" 2>/dev/null || sudo kill "$OLD_PID" 2>/dev/null || true
     for i in {1..10}; do
-      kill -0 "$OLD_PID" 2>/dev/null || break
+      ps -p "$OLD_PID" > /dev/null 2>&1 || break
       sleep 1
     done
   fi
@@ -97,7 +97,7 @@ fi
 
 ok=0
 for i in {1..25}; do
-  if kill -0 "$PID" 2>/dev/null; then
+  if ps -p "$PID" > /dev/null 2>&1; then
     if [[ -f "$VPNC_LOG" ]] && grep -q 'MARKER V3' "$VPNC_LOG"; then
       ok=1
       break
@@ -129,7 +129,7 @@ PING_TARGET="$(head -1 /tmp/nus_hopper_ips 2>/dev/null | tr -d '[:space:]')"
 if [[ -n "$PING_TARGET" ]]; then
   (
     OC_PID="$PID"
-    while kill -0 "$OC_PID" 2>/dev/null; do
+    while ps -p "$OC_PID" > /dev/null 2>&1; do
       ping -c 1 -t 5 -q "$PING_TARGET" >/dev/null 2>&1 || true
       sleep 270   # 4 min 30 s — well under any 8h idle threshold
     done

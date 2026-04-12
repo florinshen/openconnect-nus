@@ -40,10 +40,10 @@ log(){ echo "$(ts) $*" >> "$LOG"; }
 add_if(){ /sbin/ifconfig "$TUNDEV" inet "$INTERNAL_IP4_ADDRESS" "$INTERNAL_IP4_ADDRESS" netmask 255.255.255.255 up >> "$LOG" 2>&1; }
 add_mtu(){ [ -n "$INTERNAL_IP4_MTU" ] && /sbin/ifconfig "$TUNDEV" mtu "$INTERNAL_IP4_MTU" >> "$LOG" 2>&1; }
 
-add_r(){ /sbin/route -n add -net "$1" -netmask "$2" -interface "$TUNDEV" >> "$LOG" 2>&1; }
+add_r(){ /sbin/route -n add -net "$1" -netmask "$2" -interface "$TUNDEV" >> "$LOG" 2>&1 || /sbin/route -n change -net "$1" -netmask "$2" -interface "$TUNDEV" >> "$LOG" 2>&1; }
 del_r(){ /sbin/route -n delete -net "$1" -netmask "$2" -interface "$TUNDEV" >> "$LOG" 2>&1; }
 
-add_h(){ /sbin/route -n add -host "$1" -interface "$TUNDEV" >> "$LOG" 2>&1; }
+add_h(){ /sbin/route -n add -host "$1" -interface "$TUNDEV" >> "$LOG" 2>&1 || /sbin/route -n change -host "$1" -interface "$TUNDEV" >> "$LOG" 2>&1; }
 del_h(){ /sbin/route -n delete -host "$1" -interface "$TUNDEV" >> "$LOG" 2>&1; }
 
 resolve_ipv4() {
